@@ -42,39 +42,6 @@
             color: #64748b;
             margin-bottom: 20px;
         }
-        .voice-section {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        .btn-mic {
-            width: 65px;
-            height: 65px;
-            border-radius: 50%;
-            border: none;
-            background-color: var(--primary);
-            color: white;
-            font-size: 24px;
-            cursor: pointer;
-            transition: all 0.3s;
-            box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);
-        }
-        .btn-mic.listening {
-            background-color: var(--danger);
-            animation: pulse 1.5s infinite;
-        }
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
-        .status {
-            margin-top: 8px;
-            font-size: 12px;
-            font-weight: 500;
-            color: #64748b;
-        }
         .form-group {
             display: flex;
             flex-direction: column;
@@ -174,13 +141,8 @@
 <body>
 
 <div class="container">
-    <h1>🎙️ DompetSuara</h1>
-    <div class="sub">Ucapkan contoh: <b>"Makan bakso 25 ribu"</b></div>
-
-    <div class="voice-section">
-        <button id="micBtn" class="btn-mic">🎙️</button>
-        <div id="statusText" class="status">Ketuk mikrofon untuk mulai bicara</div>
-    </div>
+    <h1>📝 Catatan Pengeluaran</h1>
+    <div class="sub">Input manual tetap bekerja offline di laptop Anda.</div>
 
     <div class="form-group">
         <div class="input-row">
@@ -208,123 +170,62 @@
 </div>
 
 <script>
-    var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    var dataPengeluaran = JSON.parse(localStorage.getItem('pengeluaran_simple_voice')) || [];
+    let dataPengeluaran = JSON.parse(localStorage.getItem('pengeluaran_simple_v2')) || [];
 
-    var micBtn = document.getElementById('micBtn');
-    var statusText = document.getElementById('statusText');
-    var prodDesc = document.getElementById('prodDesc');
-    var prodAmount = document.getElementById('prodAmount');
-    var prodCategory = document.getElementById('prodCategory');
-    var saveBtn = document.getElementById('saveBtn');
-    var expenseList = document.getElementById('expenseList');
-    var totalAmount = document.getElementById('totalAmount');
-
-    var kamusKategori = {
-        'Makanan': ['makan', 'minum', 'kopi', 'bakso', 'nasi', 'camilan', 'snack', 'warung', 'restoran'],
-        'Transportasi': ['bensin', 'parkir', 'ojek', 'grab', 'gojek', 'bus', 'kereta', 'tol', 'motor', 'mobil'],
-        'Hiburan': ['nonton', 'bioskop', 'game', 'topup', 'netflix', 'jalan', 'wisata'],
-        'Kebutuhan Rumah': ['listrik', 'air', 'pdam', 'sabun', 'token', 'wifi', 'internet', 'kontrakan']
-    };
-
-    function deteksiKategori(teks) {
-        var teksLower = teks.toLowerCase();
-        for (var kategori in kamusKategori) {
-            var kataKunci = kamusKategori[kategori];
-            for (var i = 0; i < kataKunci.length; i++) {
-                if (teksLower.indexOf(kataKunci[i]) !== -1) {
-                    return kategori;
-                }
-            }
-        }
-        return 'Lainnya';
-    }
+    const prodDesc = document.getElementById('prodDesc');
+    const prodAmount = document.getElementById('prodAmount');
+    const prodCategory = document.getElementById('prodCategory');
+    const saveBtn = document.getElementById('saveBtn');
+    const expenseList = document.getElementById('expenseList');
+    const totalAmount = document.getElementById('totalAmount');
 
     function updateUI() {
         expenseList.innerHTML = '';
-        var total = 0;
-        dataPengeluaran.forEach(function(item, index) {
+        let total = 0;
+        dataPengeluaran.forEach((item, index) => {
             total += item.nominal;
-            var div = document.createElement('div');
+            const div = document.createElement('div');
             div.className = 'list-item';
-            div.innerHTML = '<div class="item-info"><span class="desc">' + item.keterangan + '</span><span class="tag">' + item.kategori + '</span></div><div class="item-actions"><span class="amount">- Rp ' + item.nominal.toLocaleString('id-ID') + '</span><button class="btn-delete" onclick="hapusItem(' + index + ')">🗑️</button></div>';
+            div.innerHTML = `
+                <div class="item-info">
+                    <span class="desc">${item.keterangan}</span>
+                    <span class="tag">${item.kategori}</span>
+                </div>
+                <div class="item-actions">
+                    <span class="amount">- Rp ${item.nominal.toLocaleString('id-ID')}</span>
+                    <button class="btn-delete" onclick="hapusItem(${index})">🗑️</button>
+                </div>
+            `;
             expenseList.appendChild(div);
         });
-        totalAmount.innerText = 'Rp ' + total.toLocaleString('id-ID');
+        totalAmount.innerText = `Rp ${total.toLocaleString('id-ID')}`;
     }
 
-    if (!SpeechRecognition) {
-        statusText.innerText = "❌ Browser Anda tidak mendukung input suara.";
-    } else {
-        var recognition = new SpeechRecognition();
-        recognition.lang = 'id-ID';
-        recognition.interimResults = false;
+    saveBtn.addEventListener('click', () => {
+        const keterangan = prodDesc.value.trim();
+        const nominal = parseInt(prodAmount.value);
+        const kategori = prodCategory.value;
 
-        micBtn.addEventListener('click', function() {
-            try {
-                recognition.start();
-            } catch(e) {
-                console.log("Perekaman sudah berjalan.");
-            }
-        });
+        if (!keterangan || isNaN(nominal) || nominal <= 0) {
+            alert("Harap isi keterangan dan nominal uang dengan benar!");
+            return;
+        }
 
-        recognition.onstart = function() {
-            micBtn.classList.add('listening');
-            statusText.innerText = "Mendengarkan... Silakan bicara.";
-        };
+        dataPengeluaran.push({ keterangan, nominal, kategori });
+        localStorage.setItem('pengeluaran_simple_v2', JSON.stringify(dataPengeluaran));
+        
+        prodDesc.value = '';
+        prodAmount.value = '';
+        updateUI();
+    });
 
-        recognition.onspeechend = function() {
-            recognition.stop();
-            micBtn.classList.remove('listening');
-        };
+    window.hapusItem = function(index) {
+        dataPengeluaran.splice(index, 1);
+        localStorage.setItem('pengeluaran_simple_v2', JSON.stringify(dataPengeluaran));
+        updateUI();
+    };
 
-        recognition.onresult = function(event) {
-            var hasilTeks = event.results[0][0].transcript;
-            var teksClean = hasilTeks.toLowerCase()
-                .replace(/ribu/g, '000')
-                .replace(/ratus/g, '00')
-                .replace(/juta/g, '000000')
-                .replace(/\./g, '')
-                .replace(/,/g, '');
-
-            var angkaCocok = teksClean.match(/\d+/);
-            var nominal = angkaCocok ? parseInt(angkaCocok[0]) : 0;
-            var keterangan = hasilTeks.replace(new RegExp(angkaCocok ? angkaCocok[0] : "", 'g'), '')
-                                      .replace(/ribu|ratus|juta/gi, '')
-                                      .replace(/\s+/g, ' ')
-                                      .trim();
-
-            if (!keterangan) keterangan = "Pengeluaran Suara";
-
-            prodDesc.value = keterangan;
-prodAmount.value = nominal;
-prodCategory.value = deteksiKategori(keterangan);
-statusText.innerText = "🎙️ Suara diterima! Periksa input lalu klik Simpan.";
-};
-recognition.onerror = function() {
-micBtn.classList.remove('listening');
-statusText.innerText = "❌ Akses mic diblokir atau error. Gunakan HTTPS (GitHub Pages).";
-};
-}
-saveBtn.addEventListener('click', function() {
-var keterangan = prodDesc.value.trim();
-var nominal = parseInt(prodAmount.value);
-var kategori = prodCategory.value;
-if (!keterangan || isNaN(nominal) || nominal <= 0) {
-alert("Harap isi keterangan dan nominal uang dengan benar!");
-return;
-}
-dataPengeluaran.push({ keterangan: keterangan, nominal: nominal, kategori: kategori });
-localStorage.setItem('pengeluaran_simple_voice', JSON.stringify(dataPengeluaran));
-prodDesc.value = '';
-prodAmount.value = '';
-statusText.innerText = "Ketuk mikrofon untuk mulai bicara";
-updateUI();
-});
-window.hapusItem = function(index) {
-dataPengeluaran.splice(index, 1);
-localStorage.setItem('pengeluaran_simple_voice', JSON.stringify(dataPengeluaran));
-updateUI();
-};
-updateUI();
-
+    updateUI();
+</script>
+</body>
+</html>
