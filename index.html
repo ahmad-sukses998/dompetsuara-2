@@ -1,146 +1,15 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DompetSuara - Catatan Keuangan Voice</title>
-    <style>
-        :root {
-            --primary: #2563eb;
-            --primary-hover: #1d4ed8;
-            --danger: #dc2626;
-            --bg: #f8fafc;
-            --card: #ffffff;
-            --text: #1e293b;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg);
-            color: var(--text);
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-        }
-
-        .container {
-            width: 100%;
-            max-width: 500px;
-            background: var(--card);
-            padding: 25px;
-            border-radius: 16px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
-
-        h1 { text-align: center; font-size: 24px; margin-bottom: 5px; color: var(--primary); }
-        .sub { text-align: center; font-size: 14px; color: #64748b; margin-bottom: 25px; }
-
-        .voice-section {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            margin-bottom: 30px;
-        }
-
-        .btn-mic {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            border: none;
-            background-color: var(--primary);
-            color: white;
-            font-size: 32px;
-            cursor: pointer;
-            transition: all 0.3s;
-            box-shadow: 0 4px 10px rgba(37, 99, 235, 0.4);
-        }
-
-        .btn-mic.listening {
-            background-color: var(--danger);
-            animation: pulse 1.5s infinite;
-            box-shadow: 0 4px 10px rgba(220, 38, 38, 0.4);
-        }
-
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
-
-        .status { margin-top: 15px; font-weight: 500; min-height: 20px; text-align: center; }
-
-        .preview-box {
-            background: #f1f5f9;
-            padding: 12px;
-            border-radius: 8px;
-            font-size: 14px;
-            width: 100%;
-            box-sizing: border-box;
-            min-height: 50px;
-            margin-bottom: 20px;
-            border-left: 4px solid var(--primary);
-        }
-
-        .history-section h3 { border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; }
-
-        .list-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 1px solid #f1f5f9;
-        }
-
-        .list-item .desc { font-weight: 500; }
-        .list-item .amount { color: var(--danger); font-weight: 600; }
-
-        .total-box {
-            margin-top: 20px;
-            padding: 15px;
-            background: #eff6ff;
-            border-radius: 8px;
-            display: flex;
-            justify-content: space-between;
-            font-weight: bold;
-            color: var(--primary);
-        }
-    </style>
-</head>
-<body>
-
-<div class="container">
-    <h1>🎙️ DompetSuara</h1>
-    <div class="sub">Ucapkan: <b>"Beli makan 25 ribu"</b> atau <b>"Bensin 50000"</b></div>
-
-    <div class="voice-section">
-        <button id="micBtn" class="btn-mic">🎙️</button>
-        <div id="statusText" class="status">Ketuk mikrofon untuk mulai bicara</div>
-    </div>
-
-    <div>
-        <strong>Terdeteksi:</strong>
-        <div id="previewText" class="preview-box">Belum ada suara...</div>
-    </div>
-
-    <div class="history-section">
-        <h3>Riwayat Pengeluaran</h3>
-        <div id="expenseList"></div>
-        <div class="total-box">
-            <span>Total Pengeluaran:</span>
-            <span id="totalAmount">Rp 0</span>
-        </div>
-    </div>
-</div>
-
 <script>
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
-        alert("Peramban Anda tidak mendukung Voice Recognition. Gunakan Google Chrome atau Edge.");
+        alert("Browser Anda tidak mendukung Voice Recognition. Gunakan Chrome (Android) atau Safari/Chrome (iOS).");
     } else {
         const recognition = new SpeechRecognition();
-        recognition.lang = 'id-ID'; // Bahasa Indonesia
-        recognition.interimResults = false;
+        
+        // --- PENYESUAIAN KHUSUS HP ---
+        recognition.lang = 'id-ID';
+        recognition.continuous = false; // HP bekerja lebih stabil dalam mode sekali ucap
+        recognition.interimResults = true; // Menampilkan hasil sementara agar pengguna tahu HP sedang merekam
         recognition.maxAlternatives = 1;
 
         const micBtn = document.getElementById('micBtn');
@@ -150,6 +19,8 @@
         const totalAmount = document.getElementById('totalAmount');
 
         let dataPengeluaran = JSON.parse(localStorage.getItem('pengeluaran_harian')) || [];
+        let finalTranscript = '';
+        let isListening = false;
 
         function updateUI() {
             expenseList.innerHTML = '';
@@ -170,8 +41,8 @@
         }
 
         function prosesTeks(teks) {
-            previewText.innerText = `"${teks}"`;
-            
+            if (!teks.trim()) return;
+
             // Konversi sebutan nominal angka ke bentuk digit
             let teksClean = teks.toLowerCase()
                 .replace(/ribu/g, '000')
@@ -180,17 +51,15 @@
                 .replace(/\./g, '')
                 .replace(/,/g, '');
 
-            // Ambil angka dari teks
             const angkaCocok = teksClean.match(/\d+/);
             
             if (!angkaCocok) {
-                statusText.innerText = "❌ Nominal uang tidak terdeteksi. Coba lagi.";
+                statusText.innerText = "❌ Nominal tidak terdeteksi. Coba katakan: 'Makan 20 ribu'";
                 return;
             }
 
             const nominal = parseInt(angkaCocok[0]);
             
-            // Ambil keterangan dengan membuang angka & kata nominal dari kalimat
             let keterangan = teks.replace(new RegExp(angkaCocok[0], 'g'), '')
                                   .replace(/ribu|ratus|juta/gi, '')
                                   .replace(/\s+/g, ' ')
@@ -198,42 +67,71 @@
 
             if (!keterangan) keterangan = "Pengeluaran Tanpa Nama";
 
-            // Simpan ke array & LocalStorage
             dataPengeluaran.push({ keterangan, nominal });
             localStorage.setItem('pengeluaran_harian', JSON.stringify(dataPengeluaran));
             
-            statusText.innerText = `✅ Tersimpan: ${keterangan} (Rp ${nominal.toLocaleString('id-ID')})`;
+            statusText.innerText = `✅ Tersimpan: ${keterangan} (Rp${nominal.toLocaleString('id-ID')})`;
             updateUI();
         }
 
-        // Event listener mikrofon
+        // Toggle On/Off Mikrofon (Aman untuk Touch Screen HP)
         micBtn.addEventListener('click', () => {
-            recognition.start();
+            if (isListening) {
+                recognition.stop();
+            } else {
+                finalTranscript = '';
+                previewText.innerText = 'Mendengarkan...';
+                try {
+                    recognition.start();
+                } catch (e) {
+                    recognition.stop();
+                }
+            }
         });
 
         recognition.onstart = () => {
+            isListening = true;
             micBtn.classList.add('listening');
             statusText.innerText = "Mendengarkan... Silakan bicara.";
         };
 
+        recognition.onresult = (event) => {
+            let interim = '';
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) {
+                    finalTranscript += event.results[i][0].transcript;
+                } else {
+                    interim += event.results[i][0].transcript;
+                }
+            }
+            // Tampilkan teks langsung saat pengguna sedang bicara
+            previewText.innerText = `"${finalTranscript || interim}"`;
+        };
+
         recognition.onspeechend = () => {
             recognition.stop();
-            micBtn.classList.remove('listening');
         };
 
-        recognition.onresult = (event) => {
-            const hasilTeks = event.results[0][0].transcript;
-            prosesTeks(hasilTeks);
+        recognition.onend = () => {
+            isListening = false;
+            micBtn.classList.remove('listening');
+            if (finalTranscript) {
+                prosesTeks(finalTranscript);
+            }
         };
 
-        recognition.onerror = () => {
+        recognition.onerror = (event) => {
+            isListening = false;
             micBtn.classList.remove('listening');
-            statusText.innerText = "❌ Gagal mengenali suara. Pastikan izin mic aktif.";
+            if (event.error === 'not-allowed') {
+                statusText.innerText = "❌ Akses mikrofon ditolak. Izinkan mic di pengaturan HP.";
+            } else if (event.error === 'no-speech') {
+                statusText.innerText = "❌ Tidak ada suara terdeteksi. Coba lagi.";
+            } else {
+                statusText.innerText = "❌ Gangguan koneksi/mikrofon.";
+            }
         };
 
         updateUI();
     }
 </script>
-
-</body>
-</html>
