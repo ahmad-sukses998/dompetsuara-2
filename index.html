@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DompetSuara - Ringan + Voice</title>
+    <title>DompetSuara - Ringan & Stabil</title>
     <style>
         :root {
             --primary: #2563eb;
@@ -65,7 +65,7 @@
             animation: pulse 1.5s infinite;
         }
         @keyframes pulse {
-            0 { transform: scale(1); }
+            0% { transform: scale(1); }
             50% { transform: scale(1.05); }
             100% { transform: scale(1); }
         }
@@ -208,19 +208,19 @@
 </div>
 
 <script>
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    let dataPengeluaran = JSON.parse(localStorage.getItem('pengeluaran_simple_voice')) || [];
+    var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    var dataPengeluaran = JSON.parse(localStorage.getItem('pengeluaran_simple_voice')) || [];
 
-    const micBtn = document.getElementById('micBtn');
-    const statusText = document.getElementById('statusText');
-    const prodDesc = document.getElementById('prodDesc');
-    const prodAmount = document.getElementById('prodAmount');
-    const prodCategory = document.getElementById('prodCategory');
-    const saveBtn = document.getElementById('saveBtn');
-    const expenseList = document.getElementById('expenseList');
-    const totalAmount = document.getElementById('totalAmount');
+    var micBtn = document.getElementById('micBtn');
+    var statusText = document.getElementById('statusText');
+    var prodDesc = document.getElementById('prodDesc');
+    var prodAmount = document.getElementById('prodAmount');
+    var prodCategory = document.getElementById('prodCategory');
+    var saveBtn = document.getElementById('saveBtn');
+    var expenseList = document.getElementById('expenseList');
+    var totalAmount = document.getElementById('totalAmount');
 
-    const kamusKategori = {
+    var kamusKategori = {
         'Makanan': ['makan', 'minum', 'kopi', 'bakso', 'nasi', 'camilan', 'snack', 'warung', 'restoran'],
         'Transportasi': ['bensin', 'parkir', 'ojek', 'grab', 'gojek', 'bus', 'kereta', 'tol', 'motor', 'mobil'],
         'Hiburan': ['nonton', 'bioskop', 'game', 'topup', 'netflix', 'jalan', 'wisata'],
@@ -228,96 +228,93 @@
     };
 
     function deteksiKategori(teks) {
-        const teksLower = teks.toLowerCase();
-        for (const [kategori, kataKunci] of Object.entries(kamusKategori)) {
-            if (kataKunci.some(kata => teksLower.includes(kata))) return kategori;
+        var teksLower = teks.toLowerCase();
+        for (var kategori in kamusKategori) {
+            var kataKunci = kamusKategori[kategori];
+            for (var i = 0; i < kataKunci.length; i++) {
+                if (teksLower.indexOf(kataKunci[i]) !== -1) {
+                    return kategori;
+                }
+            }
         }
         return 'Lainnya';
     }
 
     function updateUI() {
         expenseList.innerHTML = '';
-        let total = 0;
-        dataPengeluaran.forEach((item, index) => {
+        var total = 0;
+        dataPengeluaran.forEach(function(item, index) {
             total += item.nominal;
-            const div = document.createElement('div');
+            var div = document.createElement('div');
             div.className = 'list-item';
-            div.innerHTML = `
-                <div class="item-info">
-                    <span class="desc">${item.keterangan}</span>
-                    <span class="tag">${item.kategori}</span>
-                </div>
-                <div class="item-actions">
-                    <span class="amount">- Rp ${item.nominal.toLocaleString('id-ID')}</span>
-                    <button class="btn-delete" onclick="hapusItem(${index})">🗑️</button>
-                </div>
-            `;
+            div.innerHTML = '<div class="item-info"><span class="desc">' + item.keterangan + '</span><span class="tag">' + item.kategori + '</span></div><div class="item-actions"><span class="amount">- Rp ' + item.nominal.toLocaleString('id-ID') + '</span><button class="btn-delete" onclick="hapusItem(' + index + ')">🗑️</button></div>';
             expenseList.appendChild(div);
         });
-        totalAmount.innerText = `Rp ${total.toLocaleString('id-ID')}`;
+        totalAmount.innerText = 'Rp ' + total.toLocaleString('id-ID');
     }
 
-    // Penyelamatan: Jika dijalankan lokal/file, suara dinonaktifkan tanpa merusak tombol simpan
     if (!SpeechRecognition) {
         statusText.innerText = "❌ Browser Anda tidak mendukung input suara.";
     } else {
-        const recognition = new SpeechRecognition();
+        var recognition = new SpeechRecognition();
         recognition.lang = 'id-ID';
         recognition.interimResults = false;
 
-        micBtn.addEventListener('click', () => {
+        micBtn.addEventListener('click', function() {
             try {
                 recognition.start();
             } catch(e) {
-                statusText.innerText = "❌ Jalankan web ini lewat https:// (GitHub Pages) untuk menggunakan Mic.";
+                console.log("Perekaman sudah berjalan.");
             }
         });
 
-        recognition.onstart = () => {
+        recognition.onstart = function() {
             micBtn.classList.add('listening');
             statusText.innerText = "Mendengarkan... Silakan bicara.";
         };
 
-        recognition.onspeechend = () => {
+        recognition.onspeechend = function() {
             recognition.stop();
             micBtn.classList.remove('listening');
         };
 
-        recognition.onresult = (event) => {
-            const hasilTeks = event.results.transcript;
-            let teksClean = hasilTeks.toLowerCase()
+        recognition.onresult = function(event) {
+            var hasilTeks = event.results[0][0].transcript;
+            var teksClean = hasilTeks.toLowerCase()
                 .replace(/ribu/g, '000')
                 .replace(/ratus/g, '00')
                 .replace(/juta/g, '000000')
                 .replace(/\./g, '')
                 .replace(/,/g, '');
 
-            const angkaCocok = teksClean.match(/\d+/);
-            let nominal = angkaCocok ? parseInt(angkaCocok) : 0;
-            let keterangan = hasilTeks.replace(new RegExp(angkaCocok, 'g'), '')
+            var angkaCocok = teksClean.match(/\d+/);
+            var nominal = angkaCocok ? parseInt(angkaCocok[0]) : 0;
+            var keterangan = hasilTeks.replace(new RegExp(angkaCocok ? angkaCocok[0] : "", 'g'), '')
                                       .replace(/ribu|ratus|juta/gi, '')
                                       .replace(/\s+/g, ' ')
-.trim();
-if (!keterangan) keterangan = "Pengeluaran Suara";
-prodDesc.value = keterangan;
+                                      .trim();
+
+            if (!keterangan) keterangan = "Pengeluaran Suara";
+
+            prodDesc.value = keterangan;
 prodAmount.value = nominal;
 prodCategory.value = deteksiKategori(keterangan);
 statusText.innerText = "🎙️ Suara diterima! Periksa input lalu klik Simpan.";
 };
-recognition.onerror = () => {
+recognition.onerror = function() {
 micBtn.classList.remove('listening');
-statusText.innerText = "❌ Jalankan lewat GitHub Pages (HTTPS) agar Mic berfungsi.";
+statusText.innerText = "❌ Akses mic diblokir atau error. Gunakan HTTPS (GitHub Pages).";
 };
 }
-saveBtn.addEventListener('click', () => {
-const keterangan = prodDesc.value.trim();
-const nominal = parseInt(prodAmount.value);
-const kategori = prodCategory.value;
+saveBtn.addEventListener('click', function() {
+var keterangan = prodDesc.value.trim();
+var nominal = parseInt(prodAmount.value);
+var kategori = prodCategory.value;
 if (!keterangan || isNaN(nominal) || nominal <= 0) {
 alert("Harap isi keterangan dan nominal uang dengan benar!");
 return;
 }
-dataPengeluaran.push({ keterangan, nominal, kategori });
+dataPengeluaran.push({ keterangan: keterangan, nominal: nominal, kategori: kategori });
 localStorage.setItem('pengeluaran_simple_voice', JSON.stringify(dataPengeluaran));
 prodDesc.value = '';
 prodAmount.value = '';
