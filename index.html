@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DompetSuara - Catatan Keuangan Voice</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --danger: #dc2626;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #1e293b;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            width: 100%;
+            max-width: 500px;
+            background: var(--card);
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+        h1 { text-align: center; font-size: 24px; margin-bottom: 5px; color: var(--primary); }
+        .sub { text-align: center; font-size: 14px; color: #64748b; margin-bottom: 25px; }
+        .voice-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        .btn-mic {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: none;
+            background-color: var(--primary);
+            color: white;
+            font-size: 32px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 10px rgba(37, 99, 235, 0.4);
+        }
+        .btn-mic.listening {
+            background-color: var(--danger);
+            animation: pulse 1.5s infinite;
+            box-shadow: 0 4px 10px rgba(220, 38, 38, 0.4);
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        .status { margin-top: 15px; font-weight: 500; min-height: 20px; text-align: center; }
+        .preview-box {
+            background: #f1f5f9;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            width: 100%;
+            box-sizing: border-box;
+            min-height: 50px;
+            margin-bottom: 20px;
+            border-left: 4px solid var(--primary);
+        }
+        .history-section h3 { border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; }
+        .list-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .list-item .desc { font-weight: 500; }
+        .list-item .amount { color: var(--danger); font-weight: 600; }
+        .total-box {
+            margin-top: 20px;
+            padding: 15px;
+            background: #eff6ff;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+            color: var(--primary);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🎙️ DompetSuara</h1>
+    <div class="sub">Ucapkan format: <b>"Beli makan 25 ribu"</b> atau <b>"Bensin 50000"</b></div>
+
+    <div class="voice-section">
+        <button id="micBtn" class="btn-mic">🎙️</button>
+        <div id="statusText" class="status">Ketuk mikrofon untuk mulai bicara</div>
+    </div>
+
+    <div>
+        <strong>Terdeteksi:</strong>
+        <div id="previewText" class="preview-box">Belum ada suara...</div>
+    </div>
+
+    <div class="history-section">
+        <h3>Riwayat Pengeluaran Harian</h3>
+        <div id="expenseList">
+            <!-- Data pengeluaran akan muncul di sini -->
+        </div>
+        <div class="total-box">
+            <span>Total Pengeluaran:</span>
+            <span id="totalAmount">Rp 0</span>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Inisialisasi Web Speech API
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    
+    if (!SpeechRecognition) {
+        alert("Maaf, peramban Anda tidak mendukung fitur Voice Recognition. Gunakan Google Chrome atau Edge.");
+    } else {
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'id-ID'; // Mengatur bahasa ke Indonesia
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+
+        const micBtn = document.getElementById('micBtn');
+        const statusText = document.getElementById('statusText');
+        const previewText = document.getElementById('previewText');
+        const expenseList = document.getElementById('expenseList');
+        const totalAmount = document.getElementById('totalAmount');
+
+        let dataPengeluaran = JSON.parse(localStorage.getItem('pengeluaran_harian')) || [];
+
+        // Fungsi memperbarui UI halaman
+        function updateUI() {
+            expenseList.innerHTML = '';
+            let total = 0;
+            
+            dataPengeluaran.forEach((item) => {
+                total += item.nominal;
+                const div = document.createElement('div');
+                div.className = 'list-item';
+                div.innerHTML = `
+                    <span class="desc">${item.keterangan}</span>
+                    <span class="amount">- Rp ${item.nominal.toLocaleString('id-ID')}</span>
+                `;
+                expenseList.appendChild(div);
+            });
+
+            totalAmount.innerText = `Rp ${total.toLocaleString('id-ID')}`;
+        }
+
+        // Fungsi memproses teks suara menjadi data terstruktur
+        function prosesTeks(teks) {
+            previewText.innerText = `"${teks}"`;
+            
+            // Konversi teks angka umum ke format digit
+            let teksClean = teks.toLowerCase()
+                .replace(/ribu/g, '000')
+                .replace(/ratus/g, '00')
+                .replace(/juta/g, '000000')
+                .replace(/\./g, '')
+                .replace(/,/g, '');
+
+            // Ekstrak semua angka dari teks
+            const angkaCocok = teksClean.match(/\d+/);
+            
+            if (!angkaCocok) {
+                statusText.innerText = "❌ Nominal uang tidak terdeteksi. Coba lagi.";
+                return;
+            }
+
+            const nominal = parseInt(angkaCocok[0]);
+            
+            // Mengambil keterangan dengan menghapus bagian nominal angka dari teks asli
+            let keterangan = teks.replace(new RegExp(angkaCocok[0], 'g'), '')
+                                  .replace(/ribu|ratus|juta/gi, '')
+                                  .replace(/\s+/g, ' ')
+                                  .trim();
+
+            if (!keterangan) keterangan = "Pengeluaran Tanpa Nama";
+
+            // Simpan data
+            dataPengeluaran.push({ keterangan, nominal });
+            localStorage.setItem('pengeluaran_harian', JSON.stringify(dataPengeluaran));
+            
+            statusText.innerText = `✅ Berhasil mencatat: ${keterangan} (Rp ${nominal.toLocaleString('id-ID')})`;
+            updateUI();
+        }
+
+        // Event Handling Suara
+        micBtn.addEventListener('click', () => {
+            recognition.start();
+        });
+
+        recognition.onstart = () => {
+            micBtn.classList.add('listening');
+            statusText.innerText = "Mendengarkan... Silakan bicara.";
+        };
+
+        recognition.onspeechend = () => {
+            recognition.stop();
+            micBtn.classList.remove('listening');
+        };
+
+        recognition.onresult = (event) => {
+            const hasilTeks = event.results[0][0].transcript;
+            prosesTeks(hasilTeks);
+        };
+
+        recognition.onerror = (event) => {
+            micBtn.classList.remove('listening');
+            statusText.innerText = "❌ Gagal mengenali suara. Pastikan izin mic aktif.";
+            console.error(event.error);
+        };
+
+        // Tampilkan data awal saat halaman dimuat
+        updateUI();
+    }
+</script>
+
+</body>
+</html>
