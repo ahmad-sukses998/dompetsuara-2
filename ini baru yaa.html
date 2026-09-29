@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DompetSuara Pro - Catatan Keuangan Voice</title>
+    <!-- Memuat Chart.js untuk Grafik -->
+    <script src="https://jsdelivr.net"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --danger: #dc2626;
+            --success: #16a34a;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #1e293b;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            width: 100%;
+            max-width: 600px;
+            background: var(--card);
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+        h1 { text-align: center; font-size: 24px; margin-bottom: 5px; color: var(--primary); }
+        .sub { text-align: center; font-size: 14px; color: #64748b; margin-bottom: 25px; }
+        
+        /* Voice Section */
+        .voice-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+        .btn-mic {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            border: none;
+            background-color: var(--primary);
+            color: white;
+            font-size: 28px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 10px rgba(37, 99, 235, 0.4);
+        }
+        .btn-mic.listening {
+            background-color: var(--danger);
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        .status { margin-top: 10px; font-size: 13px; font-weight: 500; text-align: center; color: #64748b; }
+        
+        /* Form Manual Edit */
+        .form-edit {
+            background: #f1f5f9;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            border-left: 4px solid var(--primary);
+        }
+        .form-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 8px;
+        }
+        .form-group input, .form-group select {
+            padding: 8px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .form-group input[type="text"] { flex: 2; }
+        .form-group input[type="number"] { flex: 1; }
+        .form-group select { flex: 1; }
+        .btn-save {
+            background: var(--success);
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        /* Grafik */
+        .chart-container {
+            margin: 25px 0;
+            max-height: 250px;
+            display: flex;
+            justify-content: center;
+        }
+
+        /* Riwayat */
+        .history-section h3 { border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; margin-top: 30px; }
+        .list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .item-info { display: flex; flex-direction: column; }
+        .item-info .desc { font-weight: 500; }
+        .item-info .tag { font-size: 11px; color: #64748b; background: #e2e8f0; padding: 2px 6px; border-radius: 4px; width: fit-content; margin-top: 3px; }
+        .item-actions { display: flex; align-items: center; gap: 15px; }
+        .item-actions .amount { color: var(--danger); font-weight: 600; }
+        .btn-delete { background: none; border: none; color: #cbd5e1; cursor: pointer; font-size: 16px; }
+        .btn-delete:hover { color: var(--danger); }
+        
+        .total-box {
+            margin-top: 15px;
+            padding: 15px;
+            background: #eff6ff;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        /* Tips Keuangan */
+        .tips-box {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 25px;
+        }
+        .tips-box h4 { margin: 0 0 8px 0; color: var(--success); display: flex; align-items: center; gap: 5px; }
+        .tips-box p { margin: 0; font-size: 13px; color: #166534; line-height: 1.5; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🎙️ DompetSuara Pro</h1>
+    <div class="sub">Format Suara: <b>"Makan bakso 25 ribu"</b> atau <b>"Bensin motor 15000"</b></div>
+
+    <!-- Voice Trigger -->
+    <div class="voice-section">
+        <button id="micBtn" class="btn-mic">🎙️</button>
+        <div id="statusText" class="status">Ketuk mikrofon untuk mulai bicara</div>
+    </div>
+
+    <!-- Form Edit Manually / Review Data -->
+    <div class="form-edit">
+        <strong>Review & Sesuaikan Data:</strong>
+        <div class="form-group">
+            <input type="text" id="editDesc" placeholder="Keterangan pengeluaran">
+            <input type="number" id="editAmount" placeholder="Nominal (Rp)">
+            <select id="editCategory">
+                <option value="Makanan">Makanan</option>
+                <option value="Transportasi">Transportasi</option>
+                <option value="Hiburan">Hiburan</option>
+                <option value="Kebutuhan Rumah">Kebutuhan Rumah</option>
+                <option value="Lainnya">Lainnya</option>
+            </select>
+            <button id="saveBtn" class="btn-save">Simpan</button>
+        </div>
+    </div>
+
+    <!-- Grafik Pengeluaran -->
+    <div class="chart-container">
+        <canvas id="expenseChart"></canvas>
+    </div>
+
+    <!-- Rekomendasi Finansial Pintar -->
+    <div class="tips-box">
+        <h4>💡 Saran Keuangan Anda</h4>
+        <p id="financialTips">Belum ada data pengeluaran yang cukup untuk dianalisis. Silakan mulai mencatat!</p>
+    </div>
+
+    <!-- Riwayat Transaksi -->
+    <div class="history-section">
+        <h3>Riwayat Transaksi</h3>
+        <div id="expenseList">
+            <!-- Item pengeluaran dimasukkan secara dinamis di sini -->
+        </div>
+        <div class="total-box">
+            <span>Total Pengeluaran Harian:</span>
+            <span id="totalAmount">Rp 0</span>
+        </div>
+    </div>
+</div>
+
+<script>
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let myChart = null;
+    let dataPengeluaran = JSON.parse(localStorage.getItem('pengeluaran_pro')) || [];
+
+    // Kamus kata kunci untuk Kategori Otomatis
+    const kamusKategori = {
+        'Makanan': ['makan', 'minum', 'kopi', 'bakso', 'nasi', 'camilan', 'snack', 'restoran', 'gojek', 'grabfood', 'shopeefood'],
+        'Transportasi': ['bensin', 'parkir', 'ojek', 'grab', 'gojek', 'bus', 'kereta', 'tol', 'oli', 'service', 'motor', 'mobil'],
+        'Hiburan': ['nonton', 'bioskop', 'game', 'topup', 'netflix', 'spotify', 'jalan', 'liburan', 'wisata'],
+        'Kebutuhan Rumah': ['listrik', 'air', 'pdam', 'sabun', 'belanja bulanan', 'token', 'wifi', 'internet', 'kontrakan']
+    };
+
+    if (!SpeechRecognition) {
+        alert("Peramban tidak mendukung fitur Voice Recognition. Gunakan Google Chrome!");
+    } else {
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'id-ID';
+        recognition.interimResults = false;
+
+        const micBtn = document.getElementById('micBtn');
+        const statusText = document.getElementById('statusText');
+        const editDesc = document.getElementById('editDesc');
+        const editAmount = document.getElementById('editAmount');
+        const editCategory = document.getElementById('editCategory');
+        const saveBtn = document.getElementById('saveBtn');
+
+        // --- FUNGSI KATEGORI OTOMATIS ---
+        function deteksiKategoriOtomatis(teks) {
+            const teksLower = teks.toLowerCase();
+            for (const [kategori, kataKunci] of Object.entries(kamusKategori)) {
+                if (kataKunci.some(kata => teksLower.includes(kata))) {
+                    return kategori;
+                }
+            }
+            return 'Lainnya';
+        }
+
+        // --- FUNGSI UPDATE GRAFIK (CHART.JS) ---
+        function updateChart() {
+            const agregat = { Makanan: 0, Transportasi: 0, Hiburan: 0, 'Kebutuhan Rumah': 0, Lainnya: 0 };
+            dataPengeluaran.forEach(item => {
+                if (agregat[item.kategori] !== undefined) agregat[item.kategori] += item.nominal;
+            });
+
+            const ctx = document.getElementById('expenseChart').getContext('2d');
+            
+            if (myChart) {
+                myChart.destroy();
+            }
+
+            myChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(agregat),
+                    datasets: [{
+                        data: Object.values(agregat),
+                        backgroundColor: ['#f87171', '#60a5fa', '#fbbf24', '#34d399', '#94a3b8'],
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } }
+                }
+            });
+        }
+
+// --- FUNGSI SARAN KEUANGAN ---
+function berikanSaranKeuangan() {
+const tipsEl = document.getElementById('financialTips');
+if (dataPengeluaran.length === 0) {
+tipsEl.innerText = "Belum ada data pengeluaran yang cukup untuk dianalisis. Silakan mulai mencatat!";
+return;
+}
+let total = dataPengeluaran.reduce((sum, item) => sum + item.nominal, 0);
+const agregat = { Makanan: 0, Transportasi: 0, Hiburan: 0, 'Kebutuhan Rumah': 0, Lainnya: 0 };
+dataPengeluaran.forEach(item => agregat[item.kategori] += item.nominal);
+// Algoritma evaluasi pola pengeluaran dasar
+if (agregat['Makanan'] > (total * 0.4)) {
+tipsEl.innerText = "⚠️ Pengeluaran kuliner/makanan Anda sudah melebihi 40% dari total belanja. Pertimbangkan untuk memasak di rumah untuk menghemat kas harian.";
+} else if (agregat['Hiburan'] > (total * 0.2)) {
+tipsEl.innerText = "⚠️ Alokasi pos hiburan atau tersier Anda terdeteksi cukup tinggi. Coba batasi pengeluaran non-esensial minggu ini.";
+} else if (total > 500000) {
+tipsEl.innerText = "💡 Pengeluaran akumulasi harian Anda melonjak. Pastikan untuk selalu melacak arus kas (cash flow) secara disiplin agar tidak defisit di akhir bulan.";
+} else {
+tipsEl.innerText = "✅ Struktur keuangan harian terkendali dengan baik. Pertahankan kedisiplinan alokasi dana belanja Anda!";
+}
+}
+// --- FUNGSI UPDATE UI UTAMA ---
+function updateUI() {
+const expenseList = document.getElementById('expenseList');
+const totalAmount = document.getElementById('totalAmount');
+expenseList.innerHTML = '';
+let total = 0;
+dataPengeluaran.forEach((item, index) => {
+total += item.nominal;
+const div = document.createElement('div');
+div.className = 'list-item';
+div.innerHTML = <div class="item-info"> <span class="desc">${item.keterangan}</span> <span class="tag">${item.kategori}</span> </div> <div class="item-actions"> <span class="amount">- Rp ${item.nominal.toLocaleString('id-ID')}</span> <button class="btn-delete" onclick="hapusItem(${index})">🗑️</button> </div>;
+expenseList.appendChild(div);
+});
+totalAmount.innerText = Rp ${total.toLocaleString('id-ID')};
+updateChart();
+berikanSaranKeuangan();
+}
+// --- PEMROSESAN SUARA ---
+function prosesTeksKeForm(teks) {
+let teksClean = teks.toLowerCase()
+.replace(/ribu/g, '000')
+.replace(/ratus/g, '00')
+.replace(/juta/g, '000000')
+.replace(/./g, '')
+.replace(/,/g, '');
+const angkaCocok = teksClean.match(/\d+/);
+let nominal = angkaCocok ? parseInt(angkaCocok[0]) : 0;
+let keterangan = teks.replace(new RegExp(angkaCocok, 'g'), '')
+.replace(/ribu|ratus|juta/gi, '')
+.replace(/\s+/g, ' ')
+.trim();
+if (!keterangan) keterangan = "Pengeluaran Suara";
+// Masukkan data hasil suara langsung ke kotak input form agar pengguna bisa mengedit ulang sebelum disimpan
+editDesc.value = keterangan;
+editAmount.value = nominal;
+editCategory.value = deteksiKategoriOtomatis(keterangan);
+statusText.innerText = "🎙️ Suara ditangkap! Silakan periksa kolom input lalu ketuk tombol 'Simpan'.";
+}
+// --- EVENT HANDLER ---
+micBtn.addEventListener('click', () => recognition.start());
+recognition.onstart = () => {
+micBtn.classList.add('listening');
+statusText.innerText = "Mendengarkan... Silakan sebut pengeluaran Anda.";
+};
+recognition.onspeechend = () => {
+recognition.stop();
+micBtn.classList.remove('listening');
+};
+recognition.onresult = (e) => prosesTeksKeForm(e.results[0][0].transcript);
+recognition.onerror = () => {
+micBtn.classList.remove('listening');
+statusText.innerText = "❌ Gagal mendengarkan. Periksa izin mikrofon Anda.";
+};
+// Simpan Data dari Form (Baik input manual / hasil konversi suara)
+saveBtn.addEventListener('click', () => {
+const keterangan = editDesc.value.trim();
+const nominal = parseInt(editAmount.value);
+const kategori = editCategory.value;
+if (!keterangan || isNaN(nominal) || nominal <= 0) {
+alert("Harap isi keterangan dan nominal uang dengan benar!");
+return;
+}
+dataPengeluaran.push({ keterangan, nominal, kategori });
+localStorage.setItem('pengeluaran_pro', JSON.stringify(dataPengeluaran));
+// Bersihkan form kembali
+editDesc.value = '';
+editAmount.value = '';
+statusText.innerText = "✅ Berhasil disimpan ke riwayat dan grafik!";
+updateUI();
+});
+// Fungsi Global Hapus Item
+window.hapusItem = function(index) {
+dataPengeluaran.splice(index, 1);
+localStorage.setItem('pengeluaran_pro', JSON.stringify(dataPengeluaran));
+updateUI();
+};
+// Inisialisasi Tampilan Awal
+updateUI();
+}
