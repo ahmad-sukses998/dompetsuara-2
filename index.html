@@ -3,9 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DompetAI - Catatan Keuangan Harian</title>
-    <!-- Chart.js CDN untuk Grafik Sederhana -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <title>DompetSuara - Catatan Keuangan Voice</title>
     <style>
         :root {
             --primary: #2563eb;
@@ -38,105 +36,63 @@
         h1 { text-align: center; font-size: 24px; margin-bottom: 5px; color: var(--primary); }
         .sub { text-align: center; font-size: 14px; color: #64748b; margin-bottom: 25px; }
 
-        .input-section {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-
-        .input-field {
-            flex: 1;
-            padding: 12px 16px;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 15px;
-            outline: none;
-            transition: border-color 0.2s;
-        }
-
-        .input-field:focus {
-            border-color: var(--primary);
-        }
-
-        .btn-add {
-            padding: 12px 20px;
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 15px;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-
-        .btn-add:hover {
-            background-color: var(--primary-hover);
-        }
-
-        .status { 
-            font-size: 13px;
-            font-weight: 500; 
-            min-height: 20px; 
-            margin-bottom: 20px;
-            color: #64748b;
-        }
-
-        .chart-box {
-            margin: 20px 0;
-            padding: 15px;
-            background: #f1f5f9;
-            border-radius: 12px;
+        .voice-section {
             display: flex;
             flex-direction: column;
             align-items: center;
+            margin-bottom: 30px;
         }
 
-        .chart-container {
-            position: relative;
+        .btn-mic {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: none;
+            background-color: var(--primary);
+            color: white;
+            font-size: 32px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 10px rgba(37, 99, 235, 0.4);
+        }
+
+        .btn-mic.listening {
+            background-color: var(--danger);
+            animation: pulse 1.5s infinite;
+            box-shadow: 0 4px 10px rgba(220, 38, 38, 0.4);
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .status { margin-top: 15px; font-weight: 500; min-height: 20px; text-align: center; }
+
+        .preview-box {
+            background: #f1f5f9;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
             width: 100%;
-            max-width: 250px;
-            height: 250px;
+            box-sizing: border-box;
+            min-height: 50px;
+            margin-bottom: 20px;
+            border-left: 4px solid var(--primary);
         }
 
-        .history-section h3 { 
-            border-bottom: 2px solid #e2e8f0; 
-            padding-bottom: 8px; 
-            margin-top: 10px;
-        }
+        .history-section h3 { border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; }
 
         .list-item {
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            padding: 12px 0;
+            padding: 10px 0;
             border-bottom: 1px solid #f1f5f9;
         }
 
-        .list-item .desc { font-weight: 500; display: block; }
-        .list-item .category-tag {
-            display: inline-block;
-            font-size: 11px;
-            background: #e2e8f0;
-            color: #475569;
-            padding: 2px 8px;
-            border-radius: 12px;
-            margin-top: 3px;
-        }
+        .list-item .desc { font-weight: 500; }
         .list-item .amount { color: var(--danger); font-weight: 600; }
-
-        .btn-delete {
-            background: none;
-            border: none;
-            color: #94a3b8;
-            cursor: pointer;
-            font-size: 16px;
-            margin-left: 10px;
-        }
-
-        .btn-delete:hover {
-            color: var(--danger);
-        }
 
         .total-box {
             margin-top: 20px;
@@ -153,22 +109,17 @@
 <body>
 
 <div class="container">
-    <h1>🤖 DompetAI</h1>
-    <div class="sub">Ketik: <b>"Beli bakso 20rb"</b> atau <b>"Isi bensin 50000"</b></div>
+    <h1>🎙️ DompetSuara</h1>
+    <div class="sub">Ucapkan: <b>"Beli makan 25 ribu"</b> atau <b>"Bensin 50000"</b></div>
 
-    <div class="input-section">
-        <input type="text" id="expenseInput" class="input-field" placeholder="Contoh: Beli nasi goreng 15rb..." />
-        <button id="addBtn" class="btn-add">Tambah</button>
+    <div class="voice-section">
+        <button id="micBtn" class="btn-mic">🎙️</button>
+        <div id="statusText" class="status">Ketuk mikrofon untuk mulai bicara</div>
     </div>
-    
-    <div id="statusText" class="status">Ketik kalimat pengeluaran lalu tekan Tambah.</div>
 
-    <!-- Area Grafik Sederhana -->
-    <div class="chart-box">
-        <span style="font-size: 14px; font-weight: 600; margin-bottom: 10px;">📊 Distribusi Kategori</span>
-        <div class="chart-container">
-            <canvas id="expenseChart"></canvas>
-        </div>
+    <div>
+        <strong>Terdeteksi:</strong>
+        <div id="previewText" class="preview-box">Belum ada suara...</div>
     </div>
 
     <div class="history-section">
@@ -182,165 +133,106 @@
 </div>
 
 <script>
-    const expenseInput = document.getElementById('expenseInput');
-    const addBtn = document.getElementById('addBtn');
-    const statusText = document.getElementById('statusText');
-    const expenseList = document.getElementById('expenseList');
-    const totalAmount = document.getElementById('totalAmount');
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-    let dataPengeluaran = JSON.parse(localStorage.getItem('pengeluaran_harian_ai')) || [];
-    let myChart = null;
+    if (!SpeechRecognition) {
+        alert("Peramban Anda tidak mendukung Voice Recognition. Gunakan Google Chrome atau Edge.");
+    } else {
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'id-ID'; // Bahasa Indonesia
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
 
-    // Kamus Kata Kunci AI Sederhana untuk Klasifikasi Kategori
-    const categoryKeywords = {
-        "Makanan & Minuman": ["makan", "minum", "bakso", "nasi", "kopi", "teh", "roti", "snack", "resto", "warung", "jus", "ayam", "sate", "soto", "sarapan", "siang", "malam", "kafe", "piza", "burger"],
-        "Transportasi": ["bensin", "parkir", "gojek", "grab", "e-toll", "toll", "angkot", "bus", "kereta", "tiket", "ojek", "pertalite", "pertamax", "servis", "tambal"],
-        "Belanja": ["baju", "celana", "sepatu", "tas", "sabun", "sampo", "supermarket", "indomaret", "alfamart", "skincare", "kosmetik", "tokopedia", "shopee"],
-        "Tagihan & Listrik": ["listrik", "air", "pdam", "pulsa", "kuota", "wifi", "indihome", "sewa", "kos", "kontrakan", "pajak", "asuransi", "cicilan"],
-        "Hiburan": ["nonton", "bioskop", "game", "topup", "spotify", "netflix", "jalan", "liburan", "wisata"]
-    };
+        const micBtn = document.getElementById('micBtn');
+        const statusText = document.getElementById('statusText');
+        const previewText = document.getElementById('previewText');
+        const expenseList = document.getElementById('expenseList');
+        const totalAmount = document.getElementById('totalAmount');
 
-    function tebakKategori(teks) {
-        const teksLower = teks.toLowerCase();
-        for (const [kategori, kataKunci] of Object.entries(categoryKeywords)) {
-            if (kataKunci.some(keyword => teksLower.includes(keyword))) {
-                return kategori;
-            }
-        }
-        return "Lainnya";
-    }
+        let dataPengeluaran = JSON.parse(localStorage.getItem('pengeluaran_harian')) || [];
 
-    function renderChart() {
-        // Kelompokkan total nominal per kategori
-        const categoryTotals = {};
-        dataPengeluaran.forEach(item => {
-            categoryTotals[item.kategori] = (categoryTotals[item.kategori] || 0) + item.nominal;
-        });
-
-        const labels = Object.keys(categoryTotals);
-        const dataValues = Object.values(categoryTotals);
-
-        const ctx = document.getElementById('expenseChart').getContext('2d');
-
-        if (myChart) {
-            myChart.destroy(); // Reset grafik lama sebelum render ulang
-        }
-
-        if (labels.length === 0) {
-            return;
-        }
-
-        myChart = new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: labels,
-                datasets: [{
-                    data: dataValues,
-                    backgroundColor: [
-                        '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#64748b'
-                    ],
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: { boxWidth: 12, font: { size: 11 } }
-                    }
-                }
-            }
-        });
-    }
-
-    function updateUI() {
-        expenseList.innerHTML = '';
-        let total = 0;
-
-        if (dataPengeluaran.length === 0) {
-            expenseList.innerHTML = '<div style="color: #94a3b8; text-align: center; padding: 15px 0;">Belum ada catatan pengeluaran.</div>';
-        } else {
-            dataPengeluaran.forEach((item, index) => {
+        function updateUI() {
+            expenseList.innerHTML = '';
+            let total = 0;
+            
+            dataPengeluaran.forEach((item) => {
                 total += item.nominal;
                 const div = document.createElement('div');
                 div.className = 'list-item';
                 div.innerHTML = `
-                    <div>
-                        <span class="desc">${item.keterangan}</span>
-                        <span class="category-tag">${item.kategori}</span>
-                    </div>
-                    <div>
-                        <span class="amount">- Rp ${item.nominal.toLocaleString('id-ID')}</span>
-                        <button class="btn-delete" onclick="hapusPengeluaran(${index})">✕</button>
-                    </div>
+                    <span class="desc">${item.keterangan}</span>
+                    <span class="amount">- Rp ${item.nominal.toLocaleString('id-ID')}</span>
                 `;
                 expenseList.appendChild(div);
             });
+
+            totalAmount.innerText = `Rp ${total.toLocaleString('id-ID')}`;
         }
 
-        totalAmount.innerText = `Rp ${total.toLocaleString('id-ID')}`;
-        renderChart();
-    }
+        function prosesTeks(teks) {
+            previewText.innerText = `"${teks}"`;
+            
+            // Konversi sebutan nominal angka ke bentuk digit
+            let teksClean = teks.toLowerCase()
+                .replace(/ribu/g, '000')
+                .replace(/ratus/g, '00')
+                .replace(/juta/g, '000000')
+                .replace(/\./g, '')
+                .replace(/,/g, '');
 
-    function prosesTeks(teks) {
-        if (!teks.trim()) return;
+            // Ambil angka dari teks
+            const angkaCocok = teksClean.match(/\d+/);
+            
+            if (!angkaCocok) {
+                statusText.innerText = "❌ Nominal uang tidak terdeteksi. Coba lagi.";
+                return;
+            }
 
-        let teksClean = teks.toLowerCase()
-            .replace(/ribu|rb/g, '000')
-            .replace(/ratus/g, '00')
-            .replace(/juta/g, '000000')
-            .replace(/\./g, '')
-            .replace(/,/g, '');
+            const nominal = parseInt(angkaCocok[0]);
+            
+            // Ambil keterangan dengan membuang angka & kata nominal dari kalimat
+            let keterangan = teks.replace(new RegExp(angkaCocok[0], 'g'), '')
+                                  .replace(/ribu|ratus|juta/gi, '')
+                                  .replace(/\s+/g, ' ')
+                                  .trim();
 
-        const angkaCocok = teksClean.match(/\d+/);
+            if (!keterangan) keterangan = "Pengeluaran Tanpa Nama";
 
-        if (!angkaCocok) {
-            statusText.style.color = "#dc2626";
-            statusText.innerText = "❌ Nominal angka tidak ditemukan. Contoh: 'Bakso 15rb'";
-            return;
+            // Simpan ke array & LocalStorage
+            dataPengeluaran.push({ keterangan, nominal });
+            localStorage.setItem('pengeluaran_harian', JSON.stringify(dataPengeluaran));
+            
+            statusText.innerText = `✅ Tersimpan: ${keterangan} (Rp ${nominal.toLocaleString('id-ID')})`;
+            updateUI();
         }
 
-        const nominal = parseInt(angkaCocok[0]);
+        // Event listener mikrofon
+        micBtn.addEventListener('click', () => {
+            recognition.start();
+        });
 
-        let keterangan = teks.replace(new RegExp(angkaCocok[0], 'g'), '')
-                              .replace(/ribu|rb|ratus|juta/gi, '')
-                              .replace(/\s+/g, ' ')
-                              .trim();
+        recognition.onstart = () => {
+            micBtn.classList.add('listening');
+            statusText.innerText = "Mendengarkan... Silakan bicara.";
+        };
 
-        if (!keterangan) keterangan = "Pengeluaran Tanpa Nama";
+        recognition.onspeechend = () => {
+            recognition.stop();
+            micBtn.classList.remove('listening');
+        };
 
-        // Deteksi kategori AI
-        const kategori = tebakKategori(keterangan);
+        recognition.onresult = (event) => {
+            const hasilTeks = event.results[0][0].transcript;
+            prosesTeks(hasilTeks);
+        };
 
-        dataPengeluaran.push({ keterangan, nominal, kategori });
-        localStorage.setItem('pengeluaran_harian_ai', JSON.stringify(dataPengeluaran));
+        recognition.onerror = () => {
+            micBtn.classList.remove('listening');
+            statusText.innerText = "❌ Gagal mengenali suara. Pastikan izin mic aktif.";
+        };
 
-        statusText.style.color = "#16a34a";
-        statusText.innerText = `✅ Tersimpan: [${kategori}] ${keterangan} (Rp ${nominal.toLocaleString('id-ID')})`;
-        
-        expenseInput.value = '';
         updateUI();
     }
-
-    function hapusPengeluaran(index) {
-        dataPengeluaran.splice(index, 1);
-        localStorage.setItem('pengeluaran_harian_ai', JSON.stringify(dataPengeluaran));
-        statusText.style.color = "#64748b";
-        statusText.innerText = "🗑️ Catatan berhasil dihapus.";
-        updateUI();
-    }
-
-    addBtn.addEventListener('click', () => prosesTeks(expenseInput.value));
-    
-    expenseInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            prosesTeks(expenseInput.value);
-        }
-    });
-
-    updateUI();
 </script>
 
 </body>
